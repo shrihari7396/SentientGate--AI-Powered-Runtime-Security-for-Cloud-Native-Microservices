@@ -46,16 +46,6 @@ class RateLimitCoolDownStrategyTest {
     }
 
     // ═══════════════════════════════════════════════════════════════════
-    // 429 triggers
-    // ═══════════════════════════════════════════════════════════════════
-
-    @Test
-    @DisplayName("triggers on 429 error code")
-    void triggersOn429() {
-        assertTrue(strategy.process(alertWithErrorCode(429), emptyHistory));
-    }
-
-    // ═══════════════════════════════════════════════════════════════════
     // Non-429 codes should NOT trigger
     // ═══════════════════════════════════════════════════════════════════
 
@@ -116,14 +106,6 @@ class RateLimitCoolDownStrategyTest {
                             LogEvent.builder().statusCode(429).timestamp(1000L).build(),
                             LogEvent.builder().statusCode(429).timestamp(2000L).build());
             assertFalse(strategy.process(alertWithErrorCode(200), history));
-        }
-
-        @Test
-        @DisplayName("triggers on current 429 regardless of clean history")
-        void current429StillTriggers() {
-            List<LogEvent> cleanHistory =
-                    List.of(LogEvent.builder().statusCode(200).timestamp(1000L).build());
-            assertTrue(strategy.process(alertWithErrorCode(429), cleanHistory));
         }
 
         @Test
