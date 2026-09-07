@@ -15,12 +15,6 @@ public class RateLimitCoolDownStrategy implements ThreatStrategy {
 
     @Override
     public boolean process(SecurityAlertEvent alert, List<LogEvent> history) {
-        // Current alert is a 429 — immediate trigger
-        if (alert.getErrorCode() == 429) {
-            return true;
-        }
-
-        // Check history for repeated rate-limit violations
         long rateLimitCount = history.stream().filter(log -> log.getStatusCode() == 429).count();
         return rateLimitCount >= RATE_LIMIT_HISTORY_THRESHOLD;
     }

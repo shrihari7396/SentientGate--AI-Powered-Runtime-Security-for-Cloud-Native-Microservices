@@ -49,20 +49,15 @@ public class SensitivePathStrategy implements ThreatStrategy {
 
     @Override
     public boolean process(SecurityAlertEvent alert, List<LogEvent> history) {
-        // Check the current alert path
         if (isForbidden(InputNormalizer.normalizePath(alert.getAttemptedPath()))) {
             return true;
         }
-
-        // Scan historical request paths — catches reconnaissance
-        // spread across multiple requests
         for (LogEvent log : history) {
             if (log.getPath() != null
                     && isForbidden(InputNormalizer.normalizePath(log.getPath()))) {
                 return true;
             }
         }
-
         return false;
     }
 

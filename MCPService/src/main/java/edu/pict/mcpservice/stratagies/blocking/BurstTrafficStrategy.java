@@ -16,8 +16,8 @@ public class BurstTrafficStrategy implements ThreatStrategy {
         if (history.size() < 10) return false;
 
         // Check if the last 20 requests happened in under 5 seconds
-        long startTime = history.get(0).getTimestamp();
-        long endTime = history.get(history.size() - 1).getTimestamp();
+        long startTime = history.getFirst().getTimestamp();
+        long endTime = history.getLast().getTimestamp();
 
         return (endTime - startTime) < 5000 && history.size() >= 20;
     }
