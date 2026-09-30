@@ -1,13 +1,18 @@
-name: Main CI/CD Pipeline
+name: Pull Request CI
 
 on:
-  push:
+  pull_request:
     branches:
       - main
+    types:
+      - opened
+      - synchronize  # Triggers automatically on every push/commit to the pull request
+      - reopened
 
+# Cancel obsolete in-flight runs if newer commits are pushed to the same pull request
 concurrency:
-  group: main-deployment
-  cancel-in-progress: false
+  group: pr-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
   test:
@@ -18,6 +23,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set up JDK 21
         uses: actions/setup-java@v4
@@ -43,28 +50,3 @@ jobs:
 
       - name: Run All Services and UI Tests
         run: ./scripts/linux/test_local.sh
-
-  publish:
-    name: Build & Publish Docker Images
-    needs: test
-    runs-on: ubuntu-latest
-    if: success()
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Log in to Docker Hub
-        uses: docker/login-action@v3
-        with:
-          username: ${{ secrets.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKER_PASSWORD }}
-
-      - name: Make scripts executable
-        run: chmod +x scripts/linux/*.sh
-
-      - name: Build all images
-        run: ./scripts/linux/build_and_push_images.sh build
-
-      - name: Push all images
-        run: ./scripts/linux/build_and_push_images.sh push

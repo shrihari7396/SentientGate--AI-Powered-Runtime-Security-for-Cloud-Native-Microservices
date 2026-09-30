@@ -147,12 +147,29 @@ minikube start
 .\scripts\windows\deploy.ps1           # Windows (PowerShell)
 ```
 
-## CI/CD Automation
+## CI/CD Automation & Quality Gates
 
-SentientGate utilizes GitHub Actions for seamless continuous integration:
-- **Tests Workflow** (`.github/workflows/test.yml`): Runs the entire local test suite on every commit and PR.
-- **Docker Publish** (`.github/workflows/docker-publish.yml`): Automatically builds and pushes all microservice Docker images to Docker Hub when merging into `main` or `master`.
+SentientGate enforces strict automated testing and quality gates before any changes can be merged into remote `main`:
 
+- **Pull Request CI** ([`pr-validation.yml`](.github/workflows/pr-validation.yml)):
+  - Automatically triggers when a Pull Request targeting `main` is opened, reopened, or updated with **every subsequent push** (`synchronize`).
+  - Spins up supporting infrastructure (PostgreSQL, Redis, Kafka) and executes the full test suite across all microservices and the UI.
+  - Automatically cancels outdated runs when newer commits are pushed to the PR branch.
+
+- **Main Branch CI/CD** ([`ci-cd.yml`](.github/workflows/ci-cd.yml)):
+  - Triggers on direct pushes or merged pull requests into `main`.
+  - **Tests run first**: Executes the entire test suite.
+  - **Conditional publish**: Microservice Docker images are built and pushed to Docker Hub **only if and after** all tests pass successfully.
+
+### Enforcing Remote Branch Protection (GitHub Settings)
+
+To prevent unverified changes or direct unreviewed pushes from altering the remote `main` branch:
+1. Navigate to your repository on GitHub: **Settings > Branches** (or **Rules > Rulesets**).
+2. Click **Add branch protection rule** (or create a Ruleset) for branch pattern `main`.
+3. Check **"Require a pull request before merging"**.
+4. Check **"Require status checks to pass before merging"** and select **Run Test Suite**.
+5. Check **"Require branches to be up to date before merging"**.
+6. Check **"Do not allow bypassing the above settings"**.
 ## License
 
 Apache 2.0. See `LICENSE`.
