@@ -84,32 +84,16 @@ To intelligently scale the MCP Service based on actual workload rather than just
 
 The `k8s/` directory contains all the YAML manifests required to deploy SentientGate to a Kubernetes cluster. Below is a summary of each manifest:
 
-### Secrets
-The API gateway and database credentials are intentionally not stored in these
-manifests. The AWS release workflow creates the `api-gateway-secret`,
-`postgres-secret`, and `logging-secret` Kubernetes Secrets from GitHub Actions
-secrets before applying the manifests. See [AWS-CD-SETUP.md](../AWS-CD-SETUP.md)
-for the required secret names and setup steps. For a manual deployment, create
-those Kubernetes Secrets in the `sentientgate` namespace before applying the
-service manifests.
+### Deploying with Helm
+`k8s/` is the SentientGate Helm chart:
 
-### Core Services
-* **[`ai-service-manifest.yml`](file:///home/shrihari/Documents/PersonalProjects/SentientGate/k8s/ai-service-manifest.yml)**: Deploys the AI Service (ConfigMap, Deployment, Service, and CPU-based HPA).
-* **[`api-gateway-manifest.yml`](file:///home/shrihari/Documents/PersonalProjects/SentientGate/k8s/api-gateway-manifest.yml)**: Deploys the Spring Cloud API Gateway (ConfigMap, Deployment, Service, and HPA).
-* **[`api-gateway-ingress.yml`](file:///home/shrihari/Documents/PersonalProjects/SentientGate/k8s/api-gateway-ingress.yml)**: Defines the Nginx Ingress routing rules to expose the API Gateway to external traffic.
-* **[`eureka-server-manifest.yml`](file:///home/shrihari/Documents/PersonalProjects/SentientGate/k8s/eureka-server-manifest.yml)**: Deploys the Netflix Eureka Server for service discovery.
-* **[`logging-service-manifest.yml`](file:///home/shrihari/Documents/PersonalProjects/SentientGate/k8s/logging-service-manifest.yml)**: Deploys the Logging Service (ConfigMap, Deployment, Service, and HPA).
-* **[`mcp-server-manifest.yml`](file:///home/shrihari/Documents/PersonalProjects/SentientGate/k8s/mcp-server-manifest.yml)**: Deploys the MCP Service (ConfigMap, Deployment, Service) and includes the KEDA `ScaledObject` for Kafka lag-based autoscaling.
+* `Chart.yaml` defines the chart.
+* `values.yaml` contains non-secret defaults and empty placeholders for
+  credentials.
+* `templates/` contains the services, ConfigMaps, Secrets, ingress, and
+  autoscaling resources.
 
-### User Interfaces
-* **[`sentinel-ui-manifest.yml`](file:///home/shrihari/Documents/PersonalProjects/SentientGate/k8s/sentinel-ui-manifest.yml)**: Deploys the Sentinel UI frontend (Deployment, Service, and HPA).
-* **[`sentinel-ui-ingress.yml`](file:///home/shrihari/Documents/PersonalProjects/SentientGate/k8s/sentinel-ui-ingress.yml)**: Defines the Nginx Ingress routing rules to expose the Sentinel UI.
-* **[`kafka-ui-manifest.yml`](file:///home/shrihari/Documents/PersonalProjects/SentientGate/k8s/kafka-ui-manifest.yml)**: Deploys an administrative Kafka UI dashboard to visualize Kafka topics and consumer groups.
-
-### Infrastructure & Databases
-* **[`kafka-manifest.yml`](file:///home/shrihari/Documents/PersonalProjects/SentientGate/k8s/kafka-manifest.yml)**: Deploys a standalone Apache Kafka broker used for asynchronous messaging (ConfigMap, Deployment, Service).
-* **[`postgres-manifest.yml`](file:///home/shrihari/Documents/PersonalProjects/SentientGate/k8s/postgres-manifest.yml)**: Deploys a PostgreSQL database instance along with a PersistentVolumeClaim (PVC) for durable storage.
-* **[`redis-manifest.yml`](file:///home/shrihari/Documents/PersonalProjects/SentientGate/k8s/redis-manifest.yml)**: Deploys a Redis in-memory cache/datastore.
-
-### Miscellaneous
-* **[`dummy-service-manifest.yml`](file:///home/shrihari/Documents/PersonalProjects/SentientGate/k8s/dummy-service-manifest.yml)**: Deploys a placeholder/dummy service used for testing and validation.
+The release workflow supplies sensitive values from GitHub Actions secrets and
+`OLLAMA_BASE_URL` from a repository variable, then deploys the chart with
+`helm upgrade --install`. See [AWS-CD-SETUP.md](../AWS-CD-SETUP.md) for the
+required repository settings. Do not store live credentials in `values.yaml`.

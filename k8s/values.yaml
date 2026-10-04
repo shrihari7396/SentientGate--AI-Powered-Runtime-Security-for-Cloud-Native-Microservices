@@ -1,0 +1,10 @@
+ollama:
+  baseUrl: ""
+
+secrets:
+  apiGatewaySentinelSecretKey: ""
+  apiGatewayJwtSecretKey: ""
+  postgresUser: ""
+  postgresPassword: ""
+
+rolloutId: ""

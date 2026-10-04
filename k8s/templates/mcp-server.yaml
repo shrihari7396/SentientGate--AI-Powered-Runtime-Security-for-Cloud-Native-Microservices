@@ -1,43 +1,42 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: api-gateway-config
-  namespace: sentientgate
+  name: mcp-server-config
+  namespace: {{ .Release.Namespace }}
 data:
+  SPRING_PROFILES_ACTIVE: "prod"
   SPRING_DATA_REDIS_HOST: "redis"
-  SPRING_DATA_REDIS_PORT: "6379"
   SPRING_KAFKA_BOOTSTRAP_SERVERS: "kafka-service:9092"
   EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: "http://eureka-server:8761/eureka"
+  GRPC_CLIENT_LOGGING_SERVICE_ADDRESS: "dns:///logging-service:9090"
+  SERVER_PORT: "8080"
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: api-gateway
+  name: mcp-server
   namespace: sentientgate
   labels:
-    app: api-gateway
+    app: mcp-server
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: api-gateway
+      app: mcp-server
   template:
     metadata:
+      annotations:
+        sentientgate/release-id: {{ .Values.rolloutId | quote }}
       labels:
-        app: api-gateway
+        app: mcp-server
     spec:
       containers:
-        - name: api-gateway
-          image: shrihari7396/api-gateway:latest
+        - name: mcp-server
+          image: shrihari7396/mcp-server:latest
           imagePullPolicy: Always
-          env:
-            - name: SPRING_PROFILES_ACTIVE
-              value: "prod"
           envFrom:
             - configMapRef:
-                name: api-gateway-config
-            - secretRef:
-                name: api-gateway-secret
+                name: mcp-server-config
           ports:
             - containerPort: 8080
           resources:
@@ -51,31 +50,29 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: api-gateway
+  name: mcp-server
   namespace: sentientgate
 spec:
   ports:
     - port: 8080
       targetPort: 8080
   selector:
-    app: api-gateway
+    app: mcp-server
 ---
-apiVersion: autoscaling/v2
-kind: HorizontalPodAutoscaler
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
 metadata:
-  name: api-gateway-hpa
+  name: mcp-server-kafka-scaledobject
   namespace: sentientgate
 spec:
   scaleTargetRef:
-    apiVersion: apps/v1
-    kind: Deployment
-    name: api-gateway
-  minReplicas: 1
-  maxReplicas: 5
-  metrics:
-    - type: Resource
-      resource:
-        name: cpu
-        target:
-          type: Utilization
-          averageUtilization: 80
+    name: mcp-server
+  minReplicaCount: 1
+  maxReplicaCount: 5
+  triggers:
+    - type: kafka
+      metadata:
+        bootstrapServers: kafka-service.sentientgate.svc.cluster.local:9092
+        consumerGroup: mcp-analysis-group
+        topic: security-events
+        lagThreshold: "10"

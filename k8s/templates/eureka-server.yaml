@@ -2,7 +2,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: eureka-server-config
-  namespace: sentientgate
+  namespace: {{ .Release.Namespace }}
 data:
   SPRING_PROFILES_ACTIVE: "prod"
   EUREKA_INSTANCE_HOSTNAME: "eureka-server"
@@ -21,6 +21,8 @@ spec:
       app: eureka-server
   template:
     metadata:
+      annotations:
+        sentientgate/release-id: {{ .Values.rolloutId | quote }}
       labels:
         app: eureka-server
     spec:

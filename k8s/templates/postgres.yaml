@@ -2,7 +2,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: postgres-config
-  namespace: sentientgate
+  namespace: {{ .Release.Namespace }}
 data:
   POSTGRES_DB: mydb
 ---

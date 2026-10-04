@@ -154,8 +154,10 @@ jobs:
 
       - name: Install Helm
         uses: azure/setup-helm@v4
+        with:
+          version: v3.17.3
 
-      - name: Install Kubernetes add-ons required by the manifests
+      - name: Install Kubernetes add-ons required by the chart
         shell: bash
         run: |
           set -euo pipefail
@@ -165,13 +167,13 @@ jobs:
           helm repo update
 
           helm upgrade --install ingress-nginx ingress-nginx/ingress-nginx \
-            --namespace ingress-nginx --create-namespace --wait --timeout 10m
+            --namespace ingress-nginx --create-namespace --take-ownership --wait --timeout 10m
           helm upgrade --install keda kedacore/keda \
-            --namespace keda --create-namespace --wait --timeout 10m
+            --namespace keda --create-namespace --take-ownership --wait --timeout 10m
           helm upgrade --install metrics-server metrics-server/metrics-server \
-            --namespace kube-system --wait --timeout 10m
+            --namespace kube-system --take-ownership --wait --timeout 10m
 
-      - name: Apply manifests and release secrets
+      - name: Deploy SentientGate Helm chart
         shell: bash
         env:
           API_GATEWAY_SENTINEL_SECRET_KEY: ${{ secrets.API_GATEWAY_SENTINEL_SECRET_KEY }}
@@ -181,47 +183,32 @@ jobs:
           OLLAMA_BASE_URL: ${{ vars.OLLAMA_BASE_URL }}
         run: |
           set -euo pipefail
-          kubectl create namespace sentientgate --dry-run=client -o yaml | kubectl apply -f -
+          values_override="$(mktemp "$RUNNER_TEMP/sentientgate-values.XXXXXX.json")"
+          trap 'rm -f "$values_override"' EXIT
 
-          kubectl create secret generic api-gateway-secret \
-            --namespace sentientgate \
-            --from-literal=SENTINEL_SECRET_KEY="$API_GATEWAY_SENTINEL_SECRET_KEY" \
-            --from-literal=JWT_SECRET_KEY="$API_GATEWAY_JWT_SECRET_KEY" \
-            --dry-run=client -o yaml | kubectl apply -f -
-          kubectl create secret generic postgres-secret \
-            --namespace sentientgate \
-            --from-literal=POSTGRES_USER="$POSTGRES_USER" \
-            --from-literal=POSTGRES_PASSWORD="$POSTGRES_PASSWORD" \
-            --dry-run=client -o yaml | kubectl apply -f -
-          kubectl create secret generic logging-secret \
-            --namespace sentientgate \
-            --from-literal=SPRING_DATASOURCE_USERNAME="$POSTGRES_USER" \
-            --from-literal=SPRING_DATASOURCE_PASSWORD="$POSTGRES_PASSWORD" \
-            --dry-run=client -o yaml | kubectl apply -f -
+          jq -n \
+            --arg ollamaBaseUrl "$OLLAMA_BASE_URL" \
+            --arg apiGatewaySentinelSecretKey "$API_GATEWAY_SENTINEL_SECRET_KEY" \
+            --arg apiGatewayJwtSecretKey "$API_GATEWAY_JWT_SECRET_KEY" \
+            --arg postgresUser "$POSTGRES_USER" \
+            --arg postgresPassword "$POSTGRES_PASSWORD" \
+            --arg rolloutId "$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT" \
+            '{
+              ollama: {baseUrl: $ollamaBaseUrl},
+              secrets: {
+                apiGatewaySentinelSecretKey: $apiGatewaySentinelSecretKey,
+                apiGatewayJwtSecretKey: $apiGatewayJwtSecretKey,
+                postgresUser: $postgresUser,
+                postgresPassword: $postgresPassword
+              },
+              rolloutId: $rolloutId
+            }' > "$values_override"
 
-          kubectl apply --recursive -f k8s/
-          ollama_patch="$(jq -n --arg url "$OLLAMA_BASE_URL" '{data: {OLLAMA_BASE_URL: $url}}')"
-          kubectl patch configmap ai-service-config \
+          helm upgrade --install sentientgate ./k8s \
             --namespace sentientgate \
-            --type merge \
-            --patch "$ollama_patch"
-
-      - name: Refresh release images and wait for rollouts
-        shell: bash
-        run: |
-          set -euo pipefail
-          deployments=(
-            eureka-server
-            api-gateway
-            logging-service
-            mcp-server
-            ai-service
-            dummy-service
-            sentinel-ui
-          )
-          for deployment in "${deployments[@]}"; do
-            kubectl rollout restart "deployment/$deployment" --namespace sentientgate
-            kubectl rollout status "deployment/$deployment" \
-              --namespace sentientgate \
-              --timeout=10m
-          done
+            --create-namespace \
+            --take-ownership \
+            --values ./k8s/values.yaml \
+            --values "$values_override" \
+            --wait \
+            --timeout 10m
