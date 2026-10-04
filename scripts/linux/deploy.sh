@@ -50,7 +50,7 @@ echo "[+] SentientGate Helm chart:"
 find k8s/ -type f \( -name "Chart.yaml" -o -path "k8s/templates/*.yaml" \) | sort
 echo
 
-read -r -p "Deploy all Kubernetes manifests? [y/N]: " CONFIRM
+read -r -p "Deploy the SentientGate Helm chart? [y/N]: " CONFIRM
 
 if [[ ! "$CONFIRM" =~ ^[Yy]$ ]]; then
     echo "🚫 Deployment cancelled."
@@ -74,11 +74,6 @@ for setting in \
         exit 1
     fi
 done
-
-if ! command -v helm >/dev/null 2>&1; then
-    echo "❌ Helm is required to deploy the chart." >&2
-    exit 1
-fi
 
 values_dir="$(mktemp -d)"
 trap 'rm -f "$values_dir/api-gateway-sentinel-key" "$values_dir/api-gateway-jwt-key" "$values_dir/postgres-user" "$values_dir/postgres-password" "$values_dir/ollama-base-url"; rmdir "$values_dir"' EXIT

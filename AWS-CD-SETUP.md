@@ -62,13 +62,14 @@ subnets, a single NAT gateway, an EKS control plane, two `t3.xlarge` managed
 worker nodes (scaling from one to four), and the EBS CSI add-on. EKS access is
 granted to the OIDC role in `AWS_ROLE_ARN`.
 
-The workflow creates a private, encrypted, versioned S3 bucket for Terraform
-state on its first run. Its name is based on the AWS account and repository;
-Terraform uses an S3 lock file to prevent concurrent state updates. A cluster
-that already exists but has no state in this bucket is treated as externally
-managed: the workflow skips Terraform creation and deploys to it. In that case,
-the OIDC role must already have Kubernetes access to that cluster. The workflow
-does not import or modify externally managed infrastructure.
+Only when the EKS cluster is absent, the workflow creates or reuses a private,
+encrypted, versioned S3 bucket for Terraform state and provisions the cluster.
+Its name is based on the AWS account and repository; Terraform uses an S3 lock
+file to prevent concurrent state updates. If the cluster exists, the workflow
+checks it before creating the bucket or initializing Terraform, skips all
+Terraform provisioning, and deploys the Helm chart. For an existing cluster,
+the OIDC role must already have Kubernetes access. The workflow does not import
+or modify existing infrastructure.
 
 The EKS API endpoint is public so GitHub-hosted runners can reach it; access
 still requires AWS authentication. Restrict

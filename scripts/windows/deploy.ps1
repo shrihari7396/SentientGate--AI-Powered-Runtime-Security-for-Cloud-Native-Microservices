@@ -39,7 +39,7 @@ Write-Host "[+] SentientGate Helm chart:"
 Get-ChildItem -Path 'k8s' -Recurse -Include Chart.yaml, *.yaml | Sort-Object FullName | ForEach-Object { $_.FullName }
 Write-Host ""
 
-$confirm = Read-Host "Deploy all Kubernetes manifests? [y/N]"
+$confirm = Read-Host "Deploy the SentientGate Helm chart? [y/N]"
 if ($confirm -notmatch '^[Yy]$') { Write-Host "Deployment cancelled."; exit 0 }
 
 Write-Host ""
@@ -60,11 +60,6 @@ foreach ($Setting in $RequiredSettings) {
         Write-Host "Required environment variable is missing: $Setting" -ForegroundColor Red
         exit 1
     }
-}
-
-if (-not (Get-Command helm -ErrorAction SilentlyContinue)) {
-    Write-Host "Helm is required to deploy the chart." -ForegroundColor Red
-    exit 1
 }
 
 $ValuesDir = Join-Path ([System.IO.Path]::GetTempPath()) ([System.Guid]::NewGuid().ToString())

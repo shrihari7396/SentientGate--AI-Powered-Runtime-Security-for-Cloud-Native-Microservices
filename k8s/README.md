@@ -1,6 +1,6 @@
 # Kubernetes & Observability Setup Guide
 
-This document explains the recent configuration changes made to the SentientGate microservices and Kubernetes manifests to ensure stability, proper routing, and robust observability.
+This document explains the configuration used by the SentientGate services and Helm chart for stability, routing, and observability.
 
 ## 1. Spring Boot Actuator & Prometheus Integration
 
@@ -64,7 +64,7 @@ The Nginx Ingress Controller routes external traffic into the cluster.
 The MCP Service communicates with the Logging Service via gRPC. 
 
 ### What Changed:
-* Updated `GRPC_CLIENT_LOGGING_SERVICE_ADDRESS` from `discovery:///LOGGING-SERVICE` to `dns:///logging-service:9090` in `mcp-server-manifest.yml`.
+* Updated `GRPC_CLIENT_LOGGING_SERVICE_ADDRESS` from `discovery:///LOGGING-SERVICE` to `dns:///logging-service:9090` in `templates/mcp-server.yaml`.
 ### Why it Matters:
 * While `discovery:///` works perfectly with Eureka, relying on Eureka for internal service-to-service communication inside Kubernetes is often redundant and adds a single point of failure. Using standard Kubernetes DNS (`dns:///`) leverages the cluster's native CoreDNS, providing a more robust, decoupled network link between your gRPC client and server.
 
@@ -73,7 +73,7 @@ The MCP Service communicates with the Logging Service via gRPC.
 To intelligently scale the MCP Service based on actual workload rather than just CPU utilization, we integrated KEDA (Kubernetes Event-driven Autoscaling).
 
 ### What Changed:
-* **HPA Replacement**: Removed the default CPU-based `HorizontalPodAutoscaler` from `mcp-server-manifest.yml`.
+* **HPA Replacement**: Removed the default CPU-based `HorizontalPodAutoscaler` from `templates/mcp-server.yaml`.
 * **ScaledObject Creation**: Added a KEDA `ScaledObject` that targets the `mcp-server` deployment.
 * **Kafka Trigger**: Configured the `ScaledObject` to monitor the `security-events` Kafka topic using the `mcp-analysis-group` consumer group.
 

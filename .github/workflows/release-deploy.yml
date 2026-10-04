@@ -64,8 +64,29 @@ jobs:
           role-session-name: SentientGateRelease-${{ github.run_id }}
           role-duration-seconds: 7200
 
+      - name: Check for existing EKS cluster before creating AWS resources
+        id: cluster
+        shell: bash
+        run: |
+          set -euo pipefail
+          if error="$(aws eks describe-cluster \
+            --name "$EKS_CLUSTER_NAME" \
+            --region "$AWS_REGION" \
+            --query 'cluster.name' \
+            --output text 2>&1)"; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+            echo "EKS cluster $EKS_CLUSTER_NAME already exists; skipping Terraform provisioning."
+          elif grep -q "ResourceNotFoundException" <<< "$error"; then
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+            echo "EKS cluster $EKS_CLUSTER_NAME was not found; Terraform will provision it."
+          else
+            echo "$error" >&2
+            exit 1
+          fi
+
       - name: Create or verify Terraform state bucket
         id: backend
+        if: steps.cluster.outputs.exists == 'false'
         shell: bash
         run: |
           set -euo pipefail
@@ -98,6 +119,7 @@ jobs:
           echo "bucket=$bucket" >> "$GITHUB_OUTPUT"
 
       - name: Initialize Terraform state
+        if: steps.cluster.outputs.exists == 'false'
         working-directory: terraform
         env:
           TF_VAR_aws_region: ${{ env.AWS_REGION }}
@@ -110,44 +132,17 @@ jobs:
             -backend-config="region=${AWS_REGION}"
 
       - name: Create AWS infrastructure only when EKS is absent
+        if: steps.cluster.outputs.exists == 'false'
         working-directory: terraform
         env:
           TF_VAR_aws_region: ${{ env.AWS_REGION }}
           TF_VAR_cluster_name: ${{ env.EKS_CLUSTER_NAME }}
           TF_VAR_github_actions_role_arn: ${{ secrets.AWS_ROLE_ARN }}
-          TF_STATE_BUCKET: ${{ steps.backend.outputs.bucket }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          state_key="sentientgate/terraform.tfstate"
-          state_objects="$(aws s3api list-objects-v2 \
-            --bucket "$TF_STATE_BUCKET" \
-            --prefix "$state_key" \
-            --query "Contents[?Key=='$state_key'].Key" \
-            --output text)"
-          has_state=false
-          if [[ -n "$state_objects" && "$state_objects" != "None" ]]; then
-            has_state=true
-          fi
+        run: terraform apply -input=false -auto-approve
 
-          if aws eks describe-cluster \
-            --name "$EKS_CLUSTER_NAME" \
-            --region "$AWS_REGION" \
-            --query 'cluster.name' \
-            --output text >/dev/null 2>cluster-check-error.txt; then
-            cluster_exists=true
-          elif grep -q "ResourceNotFoundException" cluster-check-error.txt; then
-            cluster_exists=false
-          else
-            cat cluster-check-error.txt
-            exit 1
-          fi
-
-          if [[ "$cluster_exists" == "true" && "$has_state" == "false" ]]; then
-            echo "EKS cluster $EKS_CLUSTER_NAME already exists and is not tracked by this Terraform state; skipping infrastructure creation."
-          else
-            terraform apply -input=false -auto-approve
-          fi
+      - name: Confirm infrastructure provisioning was skipped
+        if: steps.cluster.outputs.exists == 'true'
+        run: echo "Existing EKS cluster found; Terraform was not initialized and no AWS infrastructure was created."
 
       - name: Configure kubectl for EKS
         run: aws eks update-kubeconfig --region "$AWS_REGION" --name "$EKS_CLUSTER_NAME"
