@@ -31,7 +31,7 @@ spec:
       containers:
         - name: mcp-server
           image: shrihari7396/mcp-server:latest
-          imagePullPolicy: IfNotPresent
+          imagePullPolicy: Always
           envFrom:
             - configMapRef:
                 name: mcp-server-config

@@ -27,7 +27,7 @@ spec:
       containers:
         - name: eureka-server
           image: shrihari7396/eureka-server:latest
-          imagePullPolicy: IfNotPresent
+          imagePullPolicy: Always
           envFrom:
             - configMapRef:
                 name: eureka-server-config

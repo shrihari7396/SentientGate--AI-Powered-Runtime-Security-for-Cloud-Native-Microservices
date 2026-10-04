@@ -27,7 +27,7 @@ spec:
       containers:
         - name: dummy-service
           image: shrihari7396/dummy-service:latest
-          imagePullPolicy: IfNotPresent
+          imagePullPolicy: Always
           envFrom:
             - configMapRef:
                 name: dummy-service-config

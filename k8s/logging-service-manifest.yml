@@ -13,16 +13,6 @@ data:
   GRPC_SERVER_PORT: "9090"
   SPRING_JPA_HIBERNATE_DDL_AUTO: "update"
 ---
-apiVersion: v1
-kind: Secret
-metadata:
-  name: logging-secret
-  namespace: sentientgate
-type: Opaque
-data:
-  SPRING_DATASOURCE_USERNAME: cG9zdGdyZXM=
-  SPRING_DATASOURCE_PASSWORD: cG9zdGdyZXM=
----
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -43,7 +33,7 @@ spec:
       containers:
         - name: logging-service
           image: shrihari7396/logging-service:latest
-          imagePullPolicy: IfNotPresent
+          imagePullPolicy: Always
           envFrom:
             - configMapRef:
                 name: logging-config

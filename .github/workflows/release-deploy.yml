@@ -1,0 +1,227 @@
+name: Deploy release to AWS EKS
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: sentientgate-production-deploy
+  cancel-in-progress: false
+
+env:
+  AWS_REGION: ${{ vars.AWS_REGION || 'us-east-1' }}
+  EKS_CLUSTER_NAME: sentientgate-eks
+
+jobs:
+  deploy:
+    name: Provision if needed and deploy manifests
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+
+    steps:
+      - name: Check out released source
+        uses: actions/checkout@v4
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.10.5
+          terraform_wrapper: false
+
+      - name: Validate required deployment settings
+        shell: bash
+        env:
+          AWS_ROLE_ARN: ${{ secrets.AWS_ROLE_ARN }}
+          API_GATEWAY_SENTINEL_SECRET_KEY: ${{ secrets.API_GATEWAY_SENTINEL_SECRET_KEY }}
+          API_GATEWAY_JWT_SECRET_KEY: ${{ secrets.API_GATEWAY_JWT_SECRET_KEY }}
+          POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+          OLLAMA_BASE_URL: ${{ vars.OLLAMA_BASE_URL }}
+        run: |
+          set -euo pipefail
+          for name in \
+            AWS_ROLE_ARN \
+            API_GATEWAY_SENTINEL_SECRET_KEY \
+            API_GATEWAY_JWT_SECRET_KEY \
+            POSTGRES_USER \
+            POSTGRES_PASSWORD \
+            OLLAMA_BASE_URL; do
+            if [[ -z "${!name}" ]]; then
+              echo "Required GitHub secret or variable is missing: $name" >&2
+              exit 1
+            fi
+          done
+
+      - name: Configure AWS credentials with OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+          role-session-name: SentientGateRelease-${{ github.run_id }}
+          role-duration-seconds: 7200
+
+      - name: Create or verify Terraform state bucket
+        id: backend
+        shell: bash
+        run: |
+          set -euo pipefail
+          account_id="$(aws sts get-caller-identity --query Account --output text)"
+          repo_hash="$(printf '%s' "$GITHUB_REPOSITORY" | sha256sum | cut -c1-8)"
+          bucket="sentientgate-tfstate-${account_id}-${repo_hash}"
+
+          if ! aws s3api head-bucket --bucket "$bucket" 2>/dev/null; then
+            if [[ "$AWS_REGION" == "us-east-1" ]]; then
+              aws s3api create-bucket --bucket "$bucket"
+            else
+              aws s3api create-bucket \
+                --bucket "$bucket" \
+                --create-bucket-configuration "LocationConstraint=$AWS_REGION"
+            fi
+          fi
+
+          aws s3api put-public-access-block \
+            --bucket "$bucket" \
+            --public-access-block-configuration \
+            'BlockPublicAcls=true,IgnorePublicAcls=true,BlockPublicPolicy=true,RestrictPublicBuckets=true'
+          aws s3api put-bucket-encryption \
+            --bucket "$bucket" \
+            --server-side-encryption-configuration \
+            '{"Rules":[{"ApplyServerSideEncryptionByDefault":{"SSEAlgorithm":"AES256"}}]}'
+          aws s3api put-bucket-versioning \
+            --bucket "$bucket" \
+            --versioning-configuration Status=Enabled
+
+          echo "bucket=$bucket" >> "$GITHUB_OUTPUT"
+
+      - name: Initialize Terraform state
+        working-directory: terraform
+        env:
+          TF_VAR_aws_region: ${{ env.AWS_REGION }}
+          TF_VAR_cluster_name: ${{ env.EKS_CLUSTER_NAME }}
+          TF_VAR_github_actions_role_arn: ${{ secrets.AWS_ROLE_ARN }}
+        run: |
+          terraform init \
+            -input=false \
+            -backend-config="bucket=${{ steps.backend.outputs.bucket }}" \
+            -backend-config="region=${AWS_REGION}"
+
+      - name: Create AWS infrastructure only when EKS is absent
+        working-directory: terraform
+        env:
+          TF_VAR_aws_region: ${{ env.AWS_REGION }}
+          TF_VAR_cluster_name: ${{ env.EKS_CLUSTER_NAME }}
+          TF_VAR_github_actions_role_arn: ${{ secrets.AWS_ROLE_ARN }}
+          TF_STATE_BUCKET: ${{ steps.backend.outputs.bucket }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          state_key="sentientgate/terraform.tfstate"
+          state_objects="$(aws s3api list-objects-v2 \
+            --bucket "$TF_STATE_BUCKET" \
+            --prefix "$state_key" \
+            --query "Contents[?Key=='$state_key'].Key" \
+            --output text)"
+          has_state=false
+          if [[ -n "$state_objects" && "$state_objects" != "None" ]]; then
+            has_state=true
+          fi
+
+          if aws eks describe-cluster \
+            --name "$EKS_CLUSTER_NAME" \
+            --region "$AWS_REGION" \
+            --query 'cluster.name' \
+            --output text >/dev/null 2>cluster-check-error.txt; then
+            cluster_exists=true
+          elif grep -q "ResourceNotFoundException" cluster-check-error.txt; then
+            cluster_exists=false
+          else
+            cat cluster-check-error.txt
+            exit 1
+          fi
+
+          if [[ "$cluster_exists" == "true" && "$has_state" == "false" ]]; then
+            echo "EKS cluster $EKS_CLUSTER_NAME already exists and is not tracked by this Terraform state; skipping infrastructure creation."
+          else
+            terraform apply -input=false -auto-approve
+          fi
+
+      - name: Configure kubectl for EKS
+        run: aws eks update-kubeconfig --region "$AWS_REGION" --name "$EKS_CLUSTER_NAME"
+
+      - name: Install Helm
+        uses: azure/setup-helm@v4
+
+      - name: Install Kubernetes add-ons required by the manifests
+        shell: bash
+        run: |
+          set -euo pipefail
+          helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx --force-update
+          helm repo add kedacore https://kedacore.github.io/charts --force-update
+          helm repo add metrics-server https://kubernetes-sigs.github.io/metrics-server/ --force-update
+          helm repo update
+
+          helm upgrade --install ingress-nginx ingress-nginx/ingress-nginx \
+            --namespace ingress-nginx --create-namespace --wait --timeout 10m
+          helm upgrade --install keda kedacore/keda \
+            --namespace keda --create-namespace --wait --timeout 10m
+          helm upgrade --install metrics-server metrics-server/metrics-server \
+            --namespace kube-system --wait --timeout 10m
+
+      - name: Apply manifests and release secrets
+        shell: bash
+        env:
+          API_GATEWAY_SENTINEL_SECRET_KEY: ${{ secrets.API_GATEWAY_SENTINEL_SECRET_KEY }}
+          API_GATEWAY_JWT_SECRET_KEY: ${{ secrets.API_GATEWAY_JWT_SECRET_KEY }}
+          POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+          OLLAMA_BASE_URL: ${{ vars.OLLAMA_BASE_URL }}
+        run: |
+          set -euo pipefail
+          kubectl create namespace sentientgate --dry-run=client -o yaml | kubectl apply -f -
+
+          kubectl create secret generic api-gateway-secret \
+            --namespace sentientgate \
+            --from-literal=SENTINEL_SECRET_KEY="$API_GATEWAY_SENTINEL_SECRET_KEY" \
+            --from-literal=JWT_SECRET_KEY="$API_GATEWAY_JWT_SECRET_KEY" \
+            --dry-run=client -o yaml | kubectl apply -f -
+          kubectl create secret generic postgres-secret \
+            --namespace sentientgate \
+            --from-literal=POSTGRES_USER="$POSTGRES_USER" \
+            --from-literal=POSTGRES_PASSWORD="$POSTGRES_PASSWORD" \
+            --dry-run=client -o yaml | kubectl apply -f -
+          kubectl create secret generic logging-secret \
+            --namespace sentientgate \
+            --from-literal=SPRING_DATASOURCE_USERNAME="$POSTGRES_USER" \
+            --from-literal=SPRING_DATASOURCE_PASSWORD="$POSTGRES_PASSWORD" \
+            --dry-run=client -o yaml | kubectl apply -f -
+
+          kubectl apply --recursive -f k8s/
+          ollama_patch="$(jq -n --arg url "$OLLAMA_BASE_URL" '{data: {OLLAMA_BASE_URL: $url}}')"
+          kubectl patch configmap ai-service-config \
+            --namespace sentientgate \
+            --type merge \
+            --patch "$ollama_patch"
+
+      - name: Refresh release images and wait for rollouts
+        shell: bash
+        run: |
+          set -euo pipefail
+          deployments=(
+            eureka-server
+            api-gateway
+            logging-service
+            mcp-server
+            ai-service
+            dummy-service
+            sentinel-ui
+          )
+          for deployment in "${deployments[@]}"; do
+            kubectl rollout restart "deployment/$deployment" --namespace sentientgate
+            kubectl rollout status "deployment/$deployment" \
+              --namespace sentientgate \
+              --timeout=10m
+          done

@@ -84,12 +84,21 @@ To intelligently scale the MCP Service based on actual workload rather than just
 
 The `k8s/` directory contains all the YAML manifests required to deploy SentientGate to a Kubernetes cluster. Below is a summary of each manifest:
 
+### Secrets
+The API gateway and database credentials are intentionally not stored in these
+manifests. The AWS release workflow creates the `api-gateway-secret`,
+`postgres-secret`, and `logging-secret` Kubernetes Secrets from GitHub Actions
+secrets before applying the manifests. See [AWS-CD-SETUP.md](../AWS-CD-SETUP.md)
+for the required secret names and setup steps. For a manual deployment, create
+those Kubernetes Secrets in the `sentientgate` namespace before applying the
+service manifests.
+
 ### Core Services
 * **[`ai-service-manifest.yml`](file:///home/shrihari/Documents/PersonalProjects/SentientGate/k8s/ai-service-manifest.yml)**: Deploys the AI Service (ConfigMap, Deployment, Service, and CPU-based HPA).
-* **[`api-gateway-manifest.yml`](file:///home/shrihari/Documents/PersonalProjects/SentientGate/k8s/api-gateway-manifest.yml)**: Deploys the Spring Cloud API Gateway (ConfigMap, Secret, Deployment, Service, and HPA).
+* **[`api-gateway-manifest.yml`](file:///home/shrihari/Documents/PersonalProjects/SentientGate/k8s/api-gateway-manifest.yml)**: Deploys the Spring Cloud API Gateway (ConfigMap, Deployment, Service, and HPA).
 * **[`api-gateway-ingress.yml`](file:///home/shrihari/Documents/PersonalProjects/SentientGate/k8s/api-gateway-ingress.yml)**: Defines the Nginx Ingress routing rules to expose the API Gateway to external traffic.
 * **[`eureka-server-manifest.yml`](file:///home/shrihari/Documents/PersonalProjects/SentientGate/k8s/eureka-server-manifest.yml)**: Deploys the Netflix Eureka Server for service discovery.
-* **[`logging-service-manifest.yml`](file:///home/shrihari/Documents/PersonalProjects/SentientGate/k8s/logging-service-manifest.yml)**: Deploys the Logging Service (ConfigMap, Secret, Deployment, Service, and HPA).
+* **[`logging-service-manifest.yml`](file:///home/shrihari/Documents/PersonalProjects/SentientGate/k8s/logging-service-manifest.yml)**: Deploys the Logging Service (ConfigMap, Deployment, Service, and HPA).
 * **[`mcp-server-manifest.yml`](file:///home/shrihari/Documents/PersonalProjects/SentientGate/k8s/mcp-server-manifest.yml)**: Deploys the MCP Service (ConfigMap, Deployment, Service) and includes the KEDA `ScaledObject` for Kafka lag-based autoscaling.
 
 ### User Interfaces

@@ -7,16 +7,6 @@ data:
   POSTGRES_DB: mydb
 ---
 apiVersion: v1
-kind: Secret
-metadata:
-  name: postgres-secret
-  namespace: sentientgate
-type: Opaque
-data:
-  POSTGRES_USER: cG9zdGdyZXM=
-  POSTGRES_PASSWORD: cG9zdGdyZXM=
----
-apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: postgres-pvc
