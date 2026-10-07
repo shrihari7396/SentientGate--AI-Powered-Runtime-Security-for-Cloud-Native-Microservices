@@ -28,7 +28,7 @@ spec:
     spec:
       containers:
         - name: eureka-server
-          image: "{{ .Values.image.repository }}/eureka-server:{{ .Values.image.tag }}"
+          image: {{ printf "%s/eureka-server@%s" .Values.image.repository (required "images.eurekaServer.digest is required" .Values.images.eurekaServer.digest) | quote }}
           imagePullPolicy: Always
           envFrom:
             - configMapRef:

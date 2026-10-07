@@ -3,7 +3,22 @@ ollama:
 
 image:
   repository: shrihari7396
-  tag: latest
+
+images:
+  apiGateway:
+    digest: ""
+  aiService:
+    digest: ""
+  dummyService:
+    digest: ""
+  eurekaServer:
+    digest: ""
+  loggingService:
+    digest: ""
+  mcpServer:
+    digest: ""
+  sentinelUi:
+    digest: ""
 
 secrets:
   apiGatewaySentinelSecretKey: ""

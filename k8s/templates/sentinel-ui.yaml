@@ -19,7 +19,7 @@ spec:
     spec:
       containers:
         - name: sentinel-ui
-          image: "{{ .Values.image.repository }}/sentinel-ui:{{ .Values.image.tag }}"
+          image: {{ printf "%s/sentinel-ui@%s" .Values.image.repository (required "images.sentinelUi.digest is required" .Values.images.sentinelUi.digest) | quote }}
           imagePullPolicy: Always
           ports:
             - containerPort: 80

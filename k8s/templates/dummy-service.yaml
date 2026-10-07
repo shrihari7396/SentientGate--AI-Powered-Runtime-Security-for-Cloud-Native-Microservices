@@ -28,7 +28,7 @@ spec:
     spec:
       containers:
         - name: dummy-service
-          image: "{{ .Values.image.repository }}/dummy-service:{{ .Values.image.tag }}"
+          image: {{ printf "%s/dummy-service@%s" .Values.image.repository (required "images.dummyService.digest is required" .Values.images.dummyService.digest) | quote }}
           imagePullPolicy: Always
           envFrom:
             - configMapRef:

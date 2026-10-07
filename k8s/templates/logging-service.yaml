@@ -34,7 +34,7 @@ spec:
     spec:
       containers:
         - name: logging-service
-          image: "{{ .Values.image.repository }}/logging-service:{{ .Values.image.tag }}"
+          image: {{ printf "%s/logging-service@%s" .Values.image.repository (required "images.loggingService.digest is required" .Values.images.loggingService.digest) | quote }}
           imagePullPolicy: Always
           envFrom:
             - configMapRef:

@@ -30,7 +30,7 @@ spec:
     spec:
       containers:
         - name: ai-service
-          image: "{{ .Values.image.repository }}/ai-service:{{ .Values.image.tag }}"
+          image: {{ printf "%s/ai-service@%s" .Values.image.repository (required "images.aiService.digest is required" .Values.images.aiService.digest) | quote }}
           imagePullPolicy: Always
           env:
             - name: SPRING_PROFILES_ACTIVE

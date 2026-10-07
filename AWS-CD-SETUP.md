@@ -7,13 +7,22 @@ only when that cluster is absent, then installs the Helm chart in `k8s/` using
 its `values.yaml`.
 
 The main-branch CI publishes development images to Docker Hub with the `latest`
-tag. On a published GitHub Release, the release workflow checks out that
-release's source, runs the test suite, builds all application images, and pushes
-them with the release tag (for example, `v1.2.3`). Only after that succeeds does
-the workflow deploy the Helm chart using the same image tag. The chart's
-`image.tag` value changes the application Deployment pod templates, causing
-Kubernetes to perform rolling updates using the release-specific images rather
-than the mutable `latest` tag.
+tag; production deployments do not use that mutable tag. On a published GitHub
+Release, the release workflow checks out that release's source, runs the test
+suite, builds all application images, and pushes them with the release tag (for
+example, `v1.2.3`). It scans each published image for fixable HIGH and CRITICAL
+vulnerabilities and fails the release before deployment if any are found. It
+then signs each image by its registry digest with keyless Cosign using GitHub
+OIDC. The workflow passes those exact digests to Helm, so the application
+Deployments use immutable image references rather than `latest` or a mutable
+release tag. Kubernetes rolls out the new pods when the digest changes.
+
+The release workflow requires a GitHub Actions Environment named `production`.
+Configure required reviewers for that environment under **Settings >
+Environments > production** to require approval before AWS credentials are
+requested and the deployment job runs. The publish job runs first; the approval
+gates the deployment after the images have been tested, scanned, published, and
+signed.
 
 ## GitHub Actions secrets
 

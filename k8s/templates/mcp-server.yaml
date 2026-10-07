@@ -32,7 +32,7 @@ spec:
     spec:
       containers:
         - name: mcp-server
-          image: "{{ .Values.image.repository }}/mcp-server:{{ .Values.image.tag }}"
+          image: {{ printf "%s/mcp-server@%s" .Values.image.repository (required "images.mcpServer.digest is required" .Values.images.mcpServer.digest) | quote }}
           imagePullPolicy: Always
           envFrom:
             - configMapRef:

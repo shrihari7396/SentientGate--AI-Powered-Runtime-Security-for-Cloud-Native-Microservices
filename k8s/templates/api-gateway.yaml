@@ -30,7 +30,7 @@ spec:
     spec:
       containers:
         - name: api-gateway
-          image: "{{ .Values.image.repository }}/api-gateway:{{ .Values.image.tag }}"
+          image: {{ printf "%s/api-gateway@%s" .Values.image.repository (required "images.apiGateway.digest is required" .Values.images.apiGateway.digest) | quote }}
           imagePullPolicy: Always
           env:
             - name: SPRING_PROFILES_ACTIVE
