@@ -45,14 +45,12 @@ helm install monitoring prometheus-community/kube-prometheus-stack \
 
 ---
 
-## Future Direction: Helmifying SentientGate
+## SentientGate Application Chart
 
-Currently, the `k8s/` directory contains around 15 individual static YAML manifests. Managing multiple environments (dev, staging, prod) with static YAMLs requires duplicating files or using tools like Kustomize.
+The SentientGate application chart is in `k8s/`. It deploys the application
+services, ConfigMaps, Kubernetes Secrets, ingress, autoscaling resources, and
+supporting Kafka, PostgreSQL, and Redis components.
 
-A future improvement to the deployment pipeline would be to package the SentientGate microservices into a custom **SentientGate Helm Chart**.
-
-### Benefits of migrating to a custom Helm Chart:
-- **Templating**: Dynamic injection of variables (like image tags, replicas, database credentials) without modifying static files.
-- **Unified Deployment**: Deploy the entire stack using a single command: `helm install sentientgate ./charts/sentientgate`.
-- **Environment Management**: Easily switch between environments using `values.dev.yaml` or `values.prod.yaml`.
-- **Rollbacks**: Helm tracks releases, making it trivial to rollback to a previous version if a deployment fails.
+The release pipeline deploys it with `helm upgrade --install sentientgate ./k8s`
+and `k8s/values.yaml`. Sensitive values are provided by GitHub Actions secrets
+through a temporary values override; do not commit credentials to the chart.

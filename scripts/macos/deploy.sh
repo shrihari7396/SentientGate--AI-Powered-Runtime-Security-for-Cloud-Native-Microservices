@@ -29,23 +29,28 @@ fi
 echo "✅ Kubernetes cluster is available."
 echo
 
+if ! command -v helm >/dev/null 2>&1; then
+    echo "❌ Helm is required to deploy the chart."
+    exit 1
+fi
+
 echo "[+] Checking for KEDA (required for autoscaling)..."
 if ! kubectl get crd scaledobjects.keda.sh >/dev/null 2>&1; then
     echo "📦 KEDA not found. Installing KEDA..."
-    kubectl apply --server-side -f https://github.com/kedacore/keda/releases/download/v2.15.1/keda-2.15.1.yaml
-    echo "⏳ Waiting for KEDA to be ready..."
-    sleep 10
-    kubectl wait --for=condition=ready pod -l app=keda-operator -n keda --timeout=120s
+    helm repo add kedacore https://kedacore.github.io/charts --force-update
+    helm repo update
+    helm upgrade --install keda kedacore/keda \
+        --namespace keda --create-namespace --take-ownership --wait --timeout 10m
 else
     echo "✅ KEDA is already installed."
 fi
 echo
 
-echo "[+] Kubernetes manifests:"
-find k8s/ -type f \( -name "*.yaml" -o -name "*.yml" \) | sort
+echo "[+] SentientGate Helm chart:"
+find k8s/ -type f \( -name "Chart.yaml" -o -path "k8s/templates/*.yaml" \) | sort
 echo
 
-read -r -p "Deploy all Kubernetes manifests? [y/N]: " CONFIRM
+read -r -p "Deploy the SentientGate Helm chart? [y/N]: " CONFIRM
 
 if [[ ! "$CONFIRM" =~ ^[Yy]$ ]]; then
     echo "🚫 Deployment cancelled."
@@ -54,15 +59,47 @@ fi
 
 echo
 echo "============================================="
-echo "📦 Applying Kubernetes manifests..."
+echo "📦 Deploying SentientGate Helm chart..."
 echo "============================================="
 echo
 
-kubectl apply -R -f k8s/
+for setting in \
+    API_GATEWAY_SENTINEL_SECRET_KEY \
+    API_GATEWAY_JWT_SECRET_KEY \
+    POSTGRES_USER \
+    POSTGRES_PASSWORD \
+    OLLAMA_BASE_URL; do
+    if [[ -z "${!setting:-}" ]]; then
+        echo "❌ Required environment variable is missing: ${setting}" >&2
+        exit 1
+    fi
+done
+
+values_dir="$(mktemp -d)"
+trap 'rm -f "$values_dir/api-gateway-sentinel-key" "$values_dir/api-gateway-jwt-key" "$values_dir/postgres-user" "$values_dir/postgres-password" "$values_dir/ollama-base-url"; rmdir "$values_dir"' EXIT
+printf '%s' "$API_GATEWAY_SENTINEL_SECRET_KEY" > "$values_dir/api-gateway-sentinel-key"
+printf '%s' "$API_GATEWAY_JWT_SECRET_KEY" > "$values_dir/api-gateway-jwt-key"
+printf '%s' "$POSTGRES_USER" > "$values_dir/postgres-user"
+printf '%s' "$POSTGRES_PASSWORD" > "$values_dir/postgres-password"
+printf '%s' "$OLLAMA_BASE_URL" > "$values_dir/ollama-base-url"
+
+helm upgrade --install sentientgate ./k8s \
+    --namespace sentientgate \
+    --create-namespace \
+    --take-ownership \
+    --values ./k8s/values.yaml \
+    --set-file "secrets.apiGatewaySentinelSecretKey=$values_dir/api-gateway-sentinel-key" \
+    --set-file "secrets.apiGatewayJwtSecretKey=$values_dir/api-gateway-jwt-key" \
+    --set-file "secrets.postgresUser=$values_dir/postgres-user" \
+    --set-file "secrets.postgresPassword=$values_dir/postgres-password" \
+    --set-file "ollama.baseUrl=$values_dir/ollama-base-url" \
+    --set-string "rolloutId=$(date -u +%Y%m%d%H%M%S)" \
+    --wait \
+    --timeout 10m
 
 echo
 echo "============================================="
-echo "✅ Deployment completed successfully!"
+echo "✅ Helm deployment completed successfully!"
 echo "============================================="
 echo
 

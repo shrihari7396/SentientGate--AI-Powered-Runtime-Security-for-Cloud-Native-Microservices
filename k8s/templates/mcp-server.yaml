@@ -2,7 +2,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: mcp-server-config
-  namespace: sentientgate
+  namespace: {{ .Release.Namespace }}
 data:
   SPRING_PROFILES_ACTIVE: "prod"
   SPRING_DATA_REDIS_HOST: "redis"
@@ -25,13 +25,15 @@ spec:
       app: mcp-server
   template:
     metadata:
+      annotations:
+        sentientgate/release-id: {{ .Values.rolloutId | quote }}
       labels:
         app: mcp-server
     spec:
       containers:
         - name: mcp-server
-          image: shrihari7396/mcp-server:latest
-          imagePullPolicy: IfNotPresent
+          image: {{ printf "%s/mcp-server@%s" .Values.image.repository (required "images.mcpServer.digest is required" .Values.images.mcpServer.digest) | quote }}
+          imagePullPolicy: Always
           envFrom:
             - configMapRef:
                 name: mcp-server-config

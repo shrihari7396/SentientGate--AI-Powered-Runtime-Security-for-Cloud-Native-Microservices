@@ -82,7 +82,7 @@ SentientGate/
 ├── EurekaServer/
 ├── Dummy/
 ├── UI/sentinel-gateway-ui/
-├── k8s/                     # Consolidated Kubernetes manifests
+├── k8s/                     # SentientGate Helm chart and values
 ├── scripts/                 # Automation scripts, per-OS: linux/ + macos/ (Bash), windows/ (PowerShell)
 ├── TOOLS/                   # Local infrastructure docker-compose
 ├── .github/workflows/       # CI/CD Pipelines
@@ -122,7 +122,10 @@ Execute the full integration test suite across all services:
 
 ## Kubernetes Deployment (Production Ready)
 
-SentientGate includes consolidated, production-ready Kubernetes manifests in the `k8s/` directory. Instead of fragmented folders, we use consolidated `manifest.yml` files for each service (e.g., `k8s/api-gateway-manifest.yml`) containing all necessary ConfigMaps, Deployments, Services, and HPAs.
+SentientGate includes a Helm chart in the `k8s/` directory. The chart contains
+the service resources, ConfigMaps, Secrets, ingress, and autoscaling resources.
+The AWS release workflow deploys it using `k8s/values.yaml`; secret values are
+supplied through GitHub Actions secrets rather than committed to the chart.
 
 ### Deploying to Minikube or any K8s Cluster
 
@@ -139,13 +142,17 @@ minikube start
 .\scripts\windows\build_and_push_images.ps1  # Windows (PowerShell)
 ```
 
-3. Deploy all services to Kubernetes:
+3. Configure the deployment values listed in [AWS-CD-SETUP.md](AWS-CD-SETUP.md).
+   For local deployment, export the secret and `OLLAMA_BASE_URL` environment
+   variables described there, then run the platform deployment script:
 ```bash
 ./scripts/linux/deploy.sh             # macOS: ./scripts/macos/deploy.sh
 ```
 ```powershell
-.\scripts\windows\deploy.ps1           # Windows (PowerShell)
+.\scripts\windows\deploy.ps1
 ```
+These scripts deploy the `k8s/` Helm chart and write sensitive values only to
+temporary files. Do not put credentials in the committed `values.yaml`.
 
 ## CI/CD Automation & Quality Gates
 
@@ -173,4 +180,3 @@ To prevent unverified changes or direct unreviewed pushes from altering the remo
 ## License
 
 Apache 2.0. See `LICENSE`.
-

@@ -1,6 +1,6 @@
 # Kubernetes & Observability Setup Guide
 
-This document explains the recent configuration changes made to the SentientGate microservices and Kubernetes manifests to ensure stability, proper routing, and robust observability.
+This document explains the configuration used by the SentientGate services and Helm chart for stability, routing, and observability.
 
 ## 1. Spring Boot Actuator & Prometheus Integration
 
@@ -64,7 +64,7 @@ The Nginx Ingress Controller routes external traffic into the cluster.
 The MCP Service communicates with the Logging Service via gRPC. 
 
 ### What Changed:
-* Updated `GRPC_CLIENT_LOGGING_SERVICE_ADDRESS` from `discovery:///LOGGING-SERVICE` to `dns:///logging-service:9090` in `mcp-server-manifest.yml`.
+* Updated `GRPC_CLIENT_LOGGING_SERVICE_ADDRESS` from `discovery:///LOGGING-SERVICE` to `dns:///logging-service:9090` in `templates/mcp-server.yaml`.
 ### Why it Matters:
 * While `discovery:///` works perfectly with Eureka, relying on Eureka for internal service-to-service communication inside Kubernetes is often redundant and adds a single point of failure. Using standard Kubernetes DNS (`dns:///`) leverages the cluster's native CoreDNS, providing a more robust, decoupled network link between your gRPC client and server.
 
@@ -73,7 +73,7 @@ The MCP Service communicates with the Logging Service via gRPC.
 To intelligently scale the MCP Service based on actual workload rather than just CPU utilization, we integrated KEDA (Kubernetes Event-driven Autoscaling).
 
 ### What Changed:
-* **HPA Replacement**: Removed the default CPU-based `HorizontalPodAutoscaler` from `mcp-server-manifest.yml`.
+* **HPA Replacement**: Removed the default CPU-based `HorizontalPodAutoscaler` from `templates/mcp-server.yaml`.
 * **ScaledObject Creation**: Added a KEDA `ScaledObject` that targets the `mcp-server` deployment.
 * **Kafka Trigger**: Configured the `ScaledObject` to monitor the `security-events` Kafka topic using the `mcp-analysis-group` consumer group.
 
@@ -84,23 +84,16 @@ To intelligently scale the MCP Service based on actual workload rather than just
 
 The `k8s/` directory contains all the YAML manifests required to deploy SentientGate to a Kubernetes cluster. Below is a summary of each manifest:
 
-### Core Services
-* **[`ai-service-manifest.yml`](file:///home/shrihari/Documents/PersonalProjects/SentientGate/k8s/ai-service-manifest.yml)**: Deploys the AI Service (ConfigMap, Deployment, Service, and CPU-based HPA).
-* **[`api-gateway-manifest.yml`](file:///home/shrihari/Documents/PersonalProjects/SentientGate/k8s/api-gateway-manifest.yml)**: Deploys the Spring Cloud API Gateway (ConfigMap, Secret, Deployment, Service, and HPA).
-* **[`api-gateway-ingress.yml`](file:///home/shrihari/Documents/PersonalProjects/SentientGate/k8s/api-gateway-ingress.yml)**: Defines the Nginx Ingress routing rules to expose the API Gateway to external traffic.
-* **[`eureka-server-manifest.yml`](file:///home/shrihari/Documents/PersonalProjects/SentientGate/k8s/eureka-server-manifest.yml)**: Deploys the Netflix Eureka Server for service discovery.
-* **[`logging-service-manifest.yml`](file:///home/shrihari/Documents/PersonalProjects/SentientGate/k8s/logging-service-manifest.yml)**: Deploys the Logging Service (ConfigMap, Secret, Deployment, Service, and HPA).
-* **[`mcp-server-manifest.yml`](file:///home/shrihari/Documents/PersonalProjects/SentientGate/k8s/mcp-server-manifest.yml)**: Deploys the MCP Service (ConfigMap, Deployment, Service) and includes the KEDA `ScaledObject` for Kafka lag-based autoscaling.
+### Deploying with Helm
+`k8s/` is the SentientGate Helm chart:
 
-### User Interfaces
-* **[`sentinel-ui-manifest.yml`](file:///home/shrihari/Documents/PersonalProjects/SentientGate/k8s/sentinel-ui-manifest.yml)**: Deploys the Sentinel UI frontend (Deployment, Service, and HPA).
-* **[`sentinel-ui-ingress.yml`](file:///home/shrihari/Documents/PersonalProjects/SentientGate/k8s/sentinel-ui-ingress.yml)**: Defines the Nginx Ingress routing rules to expose the Sentinel UI.
-* **[`kafka-ui-manifest.yml`](file:///home/shrihari/Documents/PersonalProjects/SentientGate/k8s/kafka-ui-manifest.yml)**: Deploys an administrative Kafka UI dashboard to visualize Kafka topics and consumer groups.
+* `Chart.yaml` defines the chart.
+* `values.yaml` contains non-secret defaults and empty placeholders for
+  credentials.
+* `templates/` contains the services, ConfigMaps, Secrets, ingress, and
+  autoscaling resources.
 
-### Infrastructure & Databases
-* **[`kafka-manifest.yml`](file:///home/shrihari/Documents/PersonalProjects/SentientGate/k8s/kafka-manifest.yml)**: Deploys a standalone Apache Kafka broker used for asynchronous messaging (ConfigMap, Deployment, Service).
-* **[`postgres-manifest.yml`](file:///home/shrihari/Documents/PersonalProjects/SentientGate/k8s/postgres-manifest.yml)**: Deploys a PostgreSQL database instance along with a PersistentVolumeClaim (PVC) for durable storage.
-* **[`redis-manifest.yml`](file:///home/shrihari/Documents/PersonalProjects/SentientGate/k8s/redis-manifest.yml)**: Deploys a Redis in-memory cache/datastore.
-
-### Miscellaneous
-* **[`dummy-service-manifest.yml`](file:///home/shrihari/Documents/PersonalProjects/SentientGate/k8s/dummy-service-manifest.yml)**: Deploys a placeholder/dummy service used for testing and validation.
+The release workflow supplies sensitive values from GitHub Actions secrets and
+`OLLAMA_BASE_URL` from a repository variable, then deploys the chart with
+`helm upgrade --install`. See [AWS-CD-SETUP.md](../AWS-CD-SETUP.md) for the
+required repository settings. Do not store live credentials in `values.yaml`.

@@ -2,22 +2,12 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: api-gateway-config
-  namespace: sentientgate
+  namespace: {{ .Release.Namespace }}
 data:
   SPRING_DATA_REDIS_HOST: "redis"
   SPRING_DATA_REDIS_PORT: "6379"
   SPRING_KAFKA_BOOTSTRAP_SERVERS: "kafka-service:9092"
   EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: "http://eureka-server:8761/eureka"
----
-apiVersion: v1
-kind: Secret
-metadata:
-  name: api-gateway-secret
-  namespace: sentientgate
-type: Opaque
-stringData:
-  SENTINEL_SECRET_KEY: "8f4c2a9d7e1b6f3a0c8d5e2f9a7b1c6d4e8f2a0b7c5d9e1f3a6c8b0d2e4f7a9"
-  JWT_SECRET_KEY: "3b7e9a1c5f8d2a6e0b4c9f1d7e3a8b5c2f6d0e9a4b1c7f3d8a2e5b9c6f0d4"
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -33,13 +23,15 @@ spec:
       app: api-gateway
   template:
     metadata:
+      annotations:
+        sentientgate/release-id: {{ .Values.rolloutId | quote }}
       labels:
         app: api-gateway
     spec:
       containers:
         - name: api-gateway
-          image: shrihari7396/api-gateway:latest
-          imagePullPolicy: IfNotPresent
+          image: {{ printf "%s/api-gateway@%s" .Values.image.repository (required "images.apiGateway.digest is required" .Values.images.apiGateway.digest) | quote }}
+          imagePullPolicy: Always
           env:
             - name: SPRING_PROFILES_ACTIVE
               value: "prod"

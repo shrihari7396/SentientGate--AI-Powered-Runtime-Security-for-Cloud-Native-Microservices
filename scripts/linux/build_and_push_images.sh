@@ -2,11 +2,12 @@
 # scripts/<os>/build_and_push_images.sh
 #
 # Usage:
-#   build_and_push_images.sh [build|push|all]
+#   build_and_push_images.sh [build|push|all] [image-tag]
 #
 #   build  - build every image locally (no push)
 #   push   - tag + push every previously-built image
 #   all    - build every image, then push them (default)
+#   image-tag defaults to latest
 #
 # The build phase aborts on the FIRST failure (set -e), so a service that fails
 # to compile/package can never result in a partial set of pushed images. In CI,
@@ -21,7 +22,7 @@ PHASE="${1:-all}"
 
 # Configuration
 REGISTRY_USER="shrihari7396"
-TAG="latest"
+TAG="${2:-latest}"
 
 # Colors for output
 GREEN='\033[0;32m'
