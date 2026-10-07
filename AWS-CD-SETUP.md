@@ -6,10 +6,14 @@ region (default `us-east-1`), creates the Terraform-managed VPC and EKS cluster
 only when that cluster is absent, then installs the Helm chart in `k8s/` using
 its `values.yaml`.
 
-The current CI publishes the application images to Docker Hub with the `latest`
-tag. The release workflow upgrades the Helm release with a unique run ID so
-each release rolls the deployments and pulls the newly published images.
-Publish the intended images before publishing the GitHub Release.
+The main-branch CI publishes development images to Docker Hub with the `latest`
+tag. On a published GitHub Release, the release workflow checks out that
+release's source, runs the test suite, builds all application images, and pushes
+them with the release tag (for example, `v1.2.3`). Only after that succeeds does
+the workflow deploy the Helm chart using the same image tag. The chart's
+`image.tag` value changes the application Deployment pod templates, causing
+Kubernetes to perform rolling updates using the release-specific images rather
+than the mutable `latest` tag.
 
 ## GitHub Actions secrets
 
@@ -18,6 +22,8 @@ Add these under **Settings > Secrets and variables > Actions > Secrets**:
 | Name | Value |
 | --- | --- |
 | `AWS_ROLE_ARN` | ARN of the AWS IAM role trusted for this repository's GitHub Actions OIDC identity. |
+| `DOCKER_USERNAME` | Docker Hub username that can push the SentientGate application images. |
+| `DOCKER_PASSWORD` | Docker Hub access token with permission to push the SentientGate application images. |
 | `API_GATEWAY_SENTINEL_SECRET_KEY` | New, randomly generated key used for the API gateway's Sentinel authentication. |
 | `API_GATEWAY_JWT_SECRET_KEY` | New, randomly generated JWT signing key. |
 | `POSTGRES_USER` | PostgreSQL username used by PostgreSQL and the logging service. |

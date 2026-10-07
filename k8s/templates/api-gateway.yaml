@@ -30,7 +30,7 @@ spec:
     spec:
       containers:
         - name: api-gateway
-          image: shrihari7396/api-gateway:latest
+          image: "{{ .Values.image.repository }}/api-gateway:{{ .Values.image.tag }}"
           imagePullPolicy: Always
           env:
             - name: SPRING_PROFILES_ACTIVE

@@ -32,7 +32,7 @@ spec:
     spec:
       containers:
         - name: mcp-server
-          image: shrihari7396/mcp-server:latest
+          image: "{{ .Values.image.repository }}/mcp-server:{{ .Values.image.tag }}"
           imagePullPolicy: Always
           envFrom:
             - configMapRef:

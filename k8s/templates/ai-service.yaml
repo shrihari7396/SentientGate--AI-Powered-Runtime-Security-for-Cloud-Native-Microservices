@@ -30,7 +30,7 @@ spec:
     spec:
       containers:
         - name: ai-service
-          image: shrihari7396/ai-service:latest
+          image: "{{ .Values.image.repository }}/ai-service:{{ .Values.image.tag }}"
           imagePullPolicy: Always
           env:
             - name: SPRING_PROFILES_ACTIVE

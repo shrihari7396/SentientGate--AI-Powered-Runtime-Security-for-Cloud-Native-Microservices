@@ -1,6 +1,10 @@
 ollama:
   baseUrl: ""
 
+image:
+  repository: shrihari7396
+  tag: latest
+
 secrets:
   apiGatewaySentinelSecretKey: ""
   apiGatewayJwtSecretKey: ""

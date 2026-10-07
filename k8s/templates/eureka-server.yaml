@@ -28,7 +28,7 @@ spec:
     spec:
       containers:
         - name: eureka-server
-          image: shrihari7396/eureka-server:latest
+          image: "{{ .Values.image.repository }}/eureka-server:{{ .Values.image.tag }}"
           imagePullPolicy: Always
           envFrom:
             - configMapRef:

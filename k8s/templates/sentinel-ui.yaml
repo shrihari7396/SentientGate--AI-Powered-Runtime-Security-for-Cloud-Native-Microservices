@@ -19,7 +19,7 @@ spec:
     spec:
       containers:
         - name: sentinel-ui
-          image: shrihari7396/sentinel-ui:latest
+          image: "{{ .Values.image.repository }}/sentinel-ui:{{ .Values.image.tag }}"
           imagePullPolicy: Always
           ports:
             - containerPort: 80

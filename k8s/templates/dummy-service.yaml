@@ -28,7 +28,7 @@ spec:
     spec:
       containers:
         - name: dummy-service
-          image: shrihari7396/dummy-service:latest
+          image: "{{ .Values.image.repository }}/dummy-service:{{ .Values.image.tag }}"
           imagePullPolicy: Always
           envFrom:
             - configMapRef:

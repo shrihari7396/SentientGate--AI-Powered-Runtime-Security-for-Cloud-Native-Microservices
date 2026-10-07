@@ -34,7 +34,7 @@ spec:
     spec:
       containers:
         - name: logging-service
-          image: shrihari7396/logging-service:latest
+          image: "{{ .Values.image.repository }}/logging-service:{{ .Values.image.tag }}"
           imagePullPolicy: Always
           envFrom:
             - configMapRef:
