@@ -50,6 +50,10 @@ jobs:
         working-directory: UI/sentinel-gateway-ui
         run: ./node_modules/.bin/tsc --noEmit -p tsconfig.json
 
+      - name: Test UI
+        working-directory: UI/sentinel-gateway-ui
+        run: npm test
+
       - name: Build UI
         working-directory: UI/sentinel-gateway-ui
         run: npm run build
