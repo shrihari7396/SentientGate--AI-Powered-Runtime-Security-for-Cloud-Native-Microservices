@@ -38,10 +38,26 @@ jobs:
         with:
           node-version: '20'
 
+      - name: Install UI dependencies
+        working-directory: UI/sentinel-gateway-ui
+        run: npm ci --ignore-scripts
+
+      - name: Lint UI
+        working-directory: UI/sentinel-gateway-ui
+        run: npm run lint
+
+      - name: Typecheck UI
+        working-directory: UI/sentinel-gateway-ui
+        run: ./node_modules/.bin/tsc --noEmit -p tsconfig.json
+
+      - name: Build UI
+        working-directory: UI/sentinel-gateway-ui
+        run: npm run build
+
       - name: Grant executable permissions
         run: |
           chmod +x scripts/linux/*.sh
-          find . -name "mvnw" -exec chmod +x {} +
+          find . -name "mvnw" -exec chmod +x {} \;
 
       - name: Set up Infrastructure
         run: |
