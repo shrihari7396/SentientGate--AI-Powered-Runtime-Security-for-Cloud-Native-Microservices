@@ -2,7 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: sentinel-ui
-  namespace: sentientgate
+  namespace: {{ .Release.Namespace }}
   labels:
     app: sentinel-ui
 spec:
@@ -12,13 +12,15 @@ spec:
       app: sentinel-ui
   template:
     metadata:
+      annotations:
+        sentientgate/release-id: {{ .Values.rolloutId | quote }}
       labels:
         app: sentinel-ui
     spec:
       containers:
         - name: sentinel-ui
-          image: shrihari7396/sentinel-ui:latest
-          imagePullPolicy: IfNotPresent
+          image: {{ printf "%s/sentinel-ui@%s" .Values.image.repository (required "images.sentinelUi.digest is required" .Values.images.sentinelUi.digest) | quote }}
+          imagePullPolicy: Always
           ports:
             - containerPort: 80
           resources:

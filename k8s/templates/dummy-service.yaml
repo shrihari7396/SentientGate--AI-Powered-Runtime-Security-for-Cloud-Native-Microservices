@@ -2,7 +2,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: dummy-service-config
-  namespace: sentientgate
+  namespace: {{ .Release.Namespace }}
 data:
   EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: "http://eureka-server:8761/eureka"
   SERVER_PORT: "8080"
@@ -21,13 +21,15 @@ spec:
       app: dummy-service
   template:
     metadata:
+      annotations:
+        sentientgate/release-id: {{ .Values.rolloutId | quote }}
       labels:
         app: dummy-service
     spec:
       containers:
         - name: dummy-service
-          image: shrihari7396/dummy-service:latest
-          imagePullPolicy: IfNotPresent
+          image: {{ printf "%s/dummy-service@%s" .Values.image.repository (required "images.dummyService.digest is required" .Values.images.dummyService.digest) | quote }}
+          imagePullPolicy: Always
           envFrom:
             - configMapRef:
                 name: dummy-service-config
