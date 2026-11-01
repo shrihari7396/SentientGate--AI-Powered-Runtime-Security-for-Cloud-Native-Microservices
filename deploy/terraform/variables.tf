@@ -28,7 +28,6 @@ variable "vpc_cidr" {
 }
 
 variable "cluster_endpoint_public_access_cidrs" {
-  description = "CIDRs allowed to reach the public EKS API endpoint. GitHub-hosted runners require a public endpoint."
+  description = "CIDRs allowed to reach the public EKS API endpoint. Provide trusted egress CIDRs for administrators/runners; do not use 0.0.0.0/0."
   type        = list(string)
-  default     = ["0.0.0.0/0"]
 }
