@@ -1,29 +1,40 @@
+# =============================================================================
+# SentientGate Helm Chart Values
+# =============================================================================
+
+# AI Service Configuration
 ollama:
+  # Base URL for the Ollama inference backend
   baseUrl: ""
 
+# Container Registry Configuration
 image:
   repository: shrihari7396
 
+# Microservice Image Manifest Digests
+# Pinned to immutable OCI digests published from scripts/<os>/build_and_push_images.sh
 images:
   apiGateway:
-    digest: ""
+    digest: "sha256:417c74f38c63222680e6b4e5a66e086aeda2f5c43281d805f0727a5e5fb318ee"
   aiService:
-    digest: ""
+    digest: "sha256:8d9a512a2b45e24560801877d1de231e6db45e100f99d2ab98d0a3233e2c59a5"
   dummyService:
-    digest: ""
+    digest: "sha256:7690f141253db1c07be0fd2e81f2d2ce55c55718c24a5e37f662c6e8924b678c"
   eurekaServer:
-    digest: ""
+    digest: "sha256:a6bd03e563a2b3a754cf8f272cfc96df6a0ad024105317f56038baf57daef064"
   loggingService:
-    digest: ""
+    digest: "sha256:41d1f7e3afb98c8fb6f591cd4f73d502aa967af91e9281e954dadd44fc0c6d97"
   mcpServer:
-    digest: ""
+    digest: "sha256:c16397684d113be95efd339826713600155083f5c2d5a946466cc9fadc9becc5"
   sentinelUi:
-    digest: ""
+    digest: "sha256:674c5abd28e83c642919c189c7495418b3bfafa1a701c3072898ad90980421a3"
 
+# Application Secrets (Injected via CI/CD, deploy.sh, or runtime overrides)
 secrets:
   apiGatewaySentinelSecretKey: ""
   apiGatewayJwtSecretKey: ""
   postgresUser: ""
   postgresPassword: ""
 
+# Unique rollout identifier to trigger pod restart on change
 rolloutId: ""
