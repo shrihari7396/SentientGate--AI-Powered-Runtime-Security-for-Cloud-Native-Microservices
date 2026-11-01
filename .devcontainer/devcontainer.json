@@ -2,12 +2,18 @@
   "name": "SentientGate DevContainer",
   "image": "mcr.microsoft.com/devcontainers/java:21",
   "features": {
+    "ghcr.io/devcontainers/features/java:1": {
+      "version": "none",
+      "installMaven": "true",
+      "installGradle": "false"
+    },
     "ghcr.io/devcontainers/features/node:1": {
       "version": "20"
     },
     "ghcr.io/devcontainers/features/docker-outside-of-docker:1": {
       "version": "latest",
-      "enableNonRootDocker": "true"
+      "enableNonRootDocker": "true",
+      "moby": false
     }
   },
   "customizations": {
@@ -26,6 +32,6 @@
       }
     }
   },
-  "postCreateCommand": "chmod +x ./scripts/linux/*.sh && find . -name 'mvnw' -exec chmod +x {} + && ./scripts/linux/generate_protos.sh || true",
+  "postCreateCommand": "chmod +x ./scripts/linux/*.sh && find . -name 'mvnw' -exec chmod +x {} + && ./scripts/linux/generate_protos.sh",
   "forwardPorts": [8079, 8080, 8082, 8010, 8761, 5173, 6379, 5432, 9092]
 }
