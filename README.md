@@ -174,3 +174,7 @@ To prevent unverified changes or direct unreviewed pushes from altering the remo
 
 Apache 2.0. See `LICENSE`.
 
+## Documentation
+
+See the [`Documentation/`](Documentation/) directory for full project documentation.
+
