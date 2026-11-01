@@ -1,0 +1,33 @@
+# AWS Region and Cluster Settings
+aws_region      = "us-east-1"
+cluster_name    = "sentientgate-eks"
+cluster_version = "1.31"
+
+# VPC Subnet Ranges
+vpc_cidr              = "10.40.0.0/16"
+public_subnet_cidrs   = ["10.40.0.0/20", "10.40.16.0/20"]
+private_subnet_cidrs  = ["10.40.32.0/20", "10.40.48.0/20"]
+database_subnet_cidrs = ["10.40.64.0/22", "10.40.68.0/22"]
+single_nat_gateway    = true
+
+# EKS Node Group
+node_instance_types = ["t3.xlarge"]
+node_min_size       = 1
+node_max_size       = 4
+node_desired_size   = 2
+node_disk_size      = 40
+
+# RDS MySQL
+db_name                 = "sentientgate"
+db_username             = "sg_admin"
+db_instance_class       = "db.t3.micro"
+db_allocated_storage    = 20
+db_max_allocated_storage= 100
+db_engine_version       = "8.0"
+db_skip_final_snapshot  = true
+db_deletion_protection  = false
+
+# Kubernetes Namespaces & ServiceAccounts for IRSA
+kubernetes_namespace         = "sentientgate"
+mcp_service_account_name     = "mcp-server"
+logging_service_account_name = "logging-service"

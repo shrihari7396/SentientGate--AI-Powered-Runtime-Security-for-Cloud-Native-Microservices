@@ -1,0 +1,29 @@
+ollama:
+  baseUrl: ""
+
+image:
+  repository: shrihari7396
+
+images:
+  apiGateway:
+    digest: ""
+  aiService:
+    digest: ""
+  dummyService:
+    digest: ""
+  eurekaServer:
+    digest: ""
+  loggingService:
+    digest: ""
+  mcpServer:
+    digest: ""
+  sentinelUi:
+    digest: ""
+
+secrets:
+  apiGatewaySentinelSecretKey: ""
+  apiGatewayJwtSecretKey: ""
+  postgresUser: ""
+  postgresPassword: ""
+
+rolloutId: ""
