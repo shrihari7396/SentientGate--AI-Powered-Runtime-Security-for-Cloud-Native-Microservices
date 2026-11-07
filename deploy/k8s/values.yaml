@@ -5,7 +5,7 @@
 # AI Service Configuration
 ollama:
   # Base URL for the Ollama inference backend
-  baseUrl: ""
+  baseUrl: "http://localhost:11434"
 
 # Container Registry Configuration
 image:
@@ -31,10 +31,10 @@ images:
 
 # Application Secrets (Injected via CI/CD, deploy.sh, or runtime overrides)
 secrets:
-  apiGatewaySentinelSecretKey: ""
-  apiGatewayJwtSecretKey: ""
-  postgresUser: ""
-  postgresPassword: ""
+  apiGatewaySentinelSecretKey: "asdfasdergfasdfsafsa"
+  apiGatewayJwtSecretKey: "asdfsdafsateetgdfadsf"
+  postgresUser: "asdfasdfadergsf"
+  postgresPassword: "asdfasdfsatetgdsf"
 
 # Unique rollout identifier to trigger pod restart on change
-rolloutId: ""
+rolloutId: "13"
