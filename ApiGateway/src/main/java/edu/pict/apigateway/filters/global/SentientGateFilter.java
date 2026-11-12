@@ -1,10 +1,10 @@
 package edu.pict.apigateway.filters.global;
 
+import edu.pict.apigateway.service.IpService;
 import edu.pict.apigateway.config.kafka.KafkaTopics;
 import edu.pict.apigateway.kafkaEvent.LogEvent;
 import edu.pict.apigateway.kafkaEvent.SecurityAlertEvent;
 import edu.pict.apigateway.util.Constants;
-import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cloud.gateway.filter.GatewayFilterChain;
@@ -25,7 +25,7 @@ import reactor.core.publisher.Mono;
 public class SentientGateFilter implements GlobalFilter, Ordered {
 
     private final KafkaTemplate<String, Object> kafkaTemplate;
-
+    private final IpService ipService;
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
         long startTime = System.currentTimeMillis();
@@ -55,13 +55,26 @@ public class SentientGateFilter implements GlobalFilter, Ordered {
 
                                     long requestSize =
                                             exchange.getRequest().getHeaders().getContentLength();
+                                    String remoteAddress = null;
 
-                                    String clientIp =
-                                            Objects.requireNonNull(
-                                                            exchange.getRequest()
-                                                                    .getRemoteAddress())
-                                                    .getAddress()
-                                                    .getHostAddress();
+                                   if (exchange.getRequest().getRemoteAddress() != null
+                                           && exchange.getRequest().getRemoteAddress().getAddress() != null) {
+                                                          remoteAddress =
+                                             exchange.getRequest()
+                                                     .getRemoteAddress()
+                                                     .getAddress()
+                                                     .getHostAddress();
+                                        }
+
+                                   String clientIp =
+                                            ipService.resolveClientIp(
+                                            exchange.getRequest().getHeaders(),
+                                               remoteAddress);
+
+                                  if (clientIp == null) {
+                                           clientIp = "UNKNOWN";
+                                       }
+
                                     String userAgent =
                                             exchange.getRequest()
                                                     .getHeaders()
