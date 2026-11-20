@@ -1,6 +1,6 @@
 package edu.pict.mcpservice.controller;
 
-import edu.pict.mcpservice.stratagies.blocking.ThreatStrategy;
+import edu.pict.mcpservice.strategies.blocking.ThreatStrategy;
 import java.util.List;
 import java.util.stream.IntStream;
 import lombok.AllArgsConstructor;

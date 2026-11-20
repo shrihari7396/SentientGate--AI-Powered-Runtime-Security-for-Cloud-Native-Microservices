@@ -1,4 +1,4 @@
-package edu.pict.mcpservice.stratagies.blocking;
+package edu.pict.mcpservice.strategies.blocking;
 
 import edu.pict.mcpservice.kafkaEvents.LogEvent;
 import edu.pict.mcpservice.kafkaEvents.SecurityAlertEvent;
