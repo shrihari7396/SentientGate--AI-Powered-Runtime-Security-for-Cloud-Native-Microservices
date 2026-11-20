@@ -6,8 +6,8 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
 
 import edu.pict.mcpservice.kafkaEvents.SecurityAlertEvent;
-import edu.pict.mcpservice.stratagies.blocking.AiAnomalyStrategy;
-import edu.pict.mcpservice.stratagies.blocking.ThreatStrategy;
+import edu.pict.mcpservice.strategies.blocking.AiAnomalyStrategy;
+import edu.pict.mcpservice.strategies.blocking.ThreatStrategy;
 import edu.pict.mcpservice.util.RedisGuardService;
 import java.util.ArrayList;
 import java.util.List;

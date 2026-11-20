@@ -8,7 +8,7 @@ import static org.mockito.Mockito.*;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import edu.pict.mcpservice.model.BlockRecord;
-import edu.pict.mcpservice.stratagies.blocking.ThreatStrategy;
+import edu.pict.mcpservice.strategies.blocking.ThreatStrategy;
 import java.time.Duration;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
