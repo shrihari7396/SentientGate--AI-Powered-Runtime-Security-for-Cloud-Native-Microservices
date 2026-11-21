@@ -170,16 +170,14 @@ public class ManagementControllerTest {
 
         when(objectMapper.writeValueAsString(any(BlockRecord.class)))
                 .thenThrow(new RuntimeException("Serialization fail"));
-        when(redisTemplate.opsForValue()).thenReturn(valueOperations);
-        when(valueOperations.set(eq(BLACKLIST_PREFIX + uuid), eq("true"), any(Duration.class)))
-                .thenReturn(Mono.just(true));
 
         webTestClient
                 .post()
                 .uri("/api/mgmt/blacklist/{uuid}", uuid)
                 .exchange()
                 .expectStatus()
-                .isOk();
+                .isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
+        verify(redisTemplate, never()).opsForValue();
     }
 
     @Test
