@@ -1,7 +1,5 @@
 import { usePolling } from '@/shared/hooks/usePolling';
 import { apiClient } from '@/shared/api/client';
-import { useQueryClient } from '@tanstack/react-query';
-import { toast } from 'sonner';
 
 export interface Strategy {
   id: string;
@@ -31,7 +29,6 @@ export interface BlacklistEntry {
 }
 
 export function useThreatIntel() {
-  const queryClient = useQueryClient();
   // Threat stats from GatewayMetricsController
   const stats = usePolling(
     ['threat', 'stats'],
@@ -83,25 +80,10 @@ export function useThreatIntel() {
     strategies.refetch();
   };
 
-  const blockUuid = async (uuid: string, reason: string, durationMinutes: number) => {
-    try {
-      await apiClient.post(`/mgmt/blacklist/${encodeURIComponent(uuid)}`, { reason, durationMinutes });
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ['threat', 'blacklist'] }),
-        queryClient.invalidateQueries({ queryKey: ['threat', 'feed'] }),
-        queryClient.invalidateQueries({ queryKey: ['threat', 'stats'] }),
-      ]);
-      toast.success('Target added to blacklist');
-    } catch (error) {
-      toast.error('Unable to block target. Please try again.');
-      throw error;
-    }
-  };
-
   const unblockUuid = async (uuid: string) => {
     await apiClient.delete(`/threat/blacklist/${uuid}`);
     blacklist.refetch();
   };
 
-  return { stats, strategies, feed, blacklist, toggleStrategy, unblockUuid, blockUuid };
+  return { stats, strategies, feed, blacklist, toggleStrategy, unblockUuid };
 }

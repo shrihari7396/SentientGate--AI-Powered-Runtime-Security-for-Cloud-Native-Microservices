@@ -30,14 +30,6 @@ public class ManagementController {
     @Data
     @NoArgsConstructor
     @AllArgsConstructor
-    public static class ManualBlockRequest {
-        private String reason;
-        private long durationMinutes;
-    }
-
-    @Data
-    @NoArgsConstructor
-    @AllArgsConstructor
     @Builder
     public static class BlockRecord {
         private String reason;
@@ -111,33 +103,19 @@ public class ManagementController {
     }
 
     @PostMapping("/{uuid}")
-    public Mono<ResponseEntity<Void>> block(
-            @PathVariable String uuid, @RequestBody(required = false) ManualBlockRequest request) {
-        if (uuid == null || uuid.isBlank()) {
-            return Mono.just(ResponseEntity.badRequest().<Void>build());
-        }
-        if (request == null) {
-            request = new ManualBlockRequest("MANUAL_BLOCK", 60L);
-        }
-        if (request.getReason() == null || request.getReason().isBlank()
-                || !List.of(15L, 60L, 1440L).contains(request.getDurationMinutes())) {
-            return Mono.just(ResponseEntity.badRequest().<Void>build());
-        }
-
-        Instant now = Instant.now();
-        Duration duration = Duration.ofMinutes(request.getDurationMinutes());
+    public Mono<ResponseEntity<Void>> block(@PathVariable String uuid) {
         BlockRecord record =
                 BlockRecord.builder()
-                        .reason(request.getReason().trim())
+                        .reason("MANUAL_BLOCK")
                         .severity("MEDIUM")
-                        .blockedAt(now.toEpochMilli())
-                        .expiresAt(now.plus(duration).toEpochMilli())
+                        .blockedAt(Instant.now().toEpochMilli())
+                        .expiresAt(Instant.now().plus(Duration.ofHours(1)).toEpochMilli())
                         .build();
         try {
             String jsonVal = objectMapper.writeValueAsString(record);
             return redisTemplate
                     .opsForValue()
-                    .set(BLACKLIST_PREFIX + uuid, jsonVal, duration)
+                    .set(BLACKLIST_PREFIX + uuid, jsonVal, Duration.ofHours(1))
                     .onErrorResume(
                             e -> {
                                 log.error("Failed to block uuid in Redis: {}", uuid, e);
@@ -147,11 +125,25 @@ public class ManagementController {
                             success ->
                                     Boolean.TRUE.equals(success)
                                             ? ResponseEntity.ok().<Void>build()
-                                            : ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                                            : ResponseEntity.status(
+                                                            HttpStatus.INTERNAL_SERVER_ERROR)
                                                     .<Void>build());
         } catch (Exception e) {
-            log.error("Failed to serialize manual block record for uuid: {}", uuid, e);
-            return Mono.just(ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).<Void>build());
+            return redisTemplate
+                    .opsForValue()
+                    .set(BLACKLIST_PREFIX + uuid, "true", Duration.ofHours(1))
+                    .onErrorResume(
+                            err -> {
+                                log.error("Failed to fallback block uuid in Redis: {}", uuid, err);
+                                return Mono.just(false);
+                            })
+                    .map(
+                            success ->
+                                    Boolean.TRUE.equals(success)
+                                            ? ResponseEntity.ok().<Void>build()
+                                            : ResponseEntity.status(
+                                                            HttpStatus.INTERNAL_SERVER_ERROR)
+                                                    .<Void>build());
         }
     }
 
