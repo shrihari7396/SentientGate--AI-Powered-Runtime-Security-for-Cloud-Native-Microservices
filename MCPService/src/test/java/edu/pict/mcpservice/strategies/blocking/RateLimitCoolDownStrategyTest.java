@@ -1,4 +1,4 @@
-package edu.pict.mcpservice.stratagies.blocking;
+package edu.pict.mcpservice.strategies.blocking;
 
 import static org.junit.jupiter.api.Assertions.*;
 
